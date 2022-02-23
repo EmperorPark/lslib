@@ -59,10 +59,12 @@ namespace ConverterApp
 
                 databaseSelectorCb.Items.Add(name);
 
-                if (databaseSelectorCb.Items.Count > 0)
-                {
-                    databaseSelectorCb.SelectedIndex = 0;
-                }
+                
+            }
+
+            if (databaseSelectorCb.Items.Count > 0)
+            {
+                databaseSelectorCb.SelectedIndex = 0;
             }
         }
 
@@ -112,6 +114,7 @@ namespace ConverterApp
                     LoadStory(storyStream);
 
                     MessageBox.Show("Save game database loaded successfully.");
+                    dbNameSearchBox.ReadOnly = false;
                     break;
                 }
                 case ".osi":
@@ -122,6 +125,7 @@ namespace ConverterApp
                     }
 
                     MessageBox.Show("Story file loaded successfully.");
+                    dbNameSearchBox.ReadOnly = false;
                     break;
                 }
                 default:
@@ -313,12 +317,25 @@ namespace ConverterApp
             databaseGrid.DataSource = null;
             databaseGrid.Columns.Clear();
 
-            if (databaseSelectorCb.SelectedIndex == -1)
-            {
-                return;
-            }
+            Database database = null;
 
-            Database database = _story.Databases[(uint) databaseSelectorCb.SelectedIndex + 1];
+            //if (databaseSelectorCb.Items.Count == 0)
+            //{
+            //    return;
+            //}
+
+            if (dbNameSearchBox.Text == "")
+            {
+                if (databaseSelectorCb.SelectedIndex == -1) return;
+                database = _story.Databases[(uint)databaseSelectorCb.SelectedIndex + 1];
+            }
+            else
+            {
+                
+                if (databaseSelectorCb.SelectedValue == null || !databaseSelectorCb.SelectedValue.GetType().Equals(typeof(System.Int32))) return;
+                database = _story.Databases[(uint)(int)databaseSelectorCb.SelectedValue];
+            }
+            
             databaseGrid.DataSource = database.Facts;
 
             for (var i = 0; i < database.Parameters.Types.Count; i++)
@@ -334,6 +351,44 @@ namespace ConverterApp
             {
                 var sev = new StoryDebugExportVisitor(debugFileStream);
                 sev.Visit(_story);
+            }
+        }
+
+        private void dbNameSearchBox_TextChanged(object sender, EventArgs e)
+        {
+            
+            //databaseSelectorCb.Items.Clear();
+            Dictionary<int, string> cbItem = new Dictionary<int, string>();
+            foreach (KeyValuePair<uint, Database> database in _story.Databases)
+            {
+                var name = "(Unnamed)";
+                Node owner = database.Value.OwnerNode;
+                if (owner != null)
+                {
+                    name = owner.Name.Length > 0 ? $"{owner.Name}({owner.NumParams})" : $"<{owner.TypeName()}>";
+                }
+
+                name += $" #{database.Key} ({database.Value.Facts.Count} rows)";
+
+                if (name.ToLower().Contains(dbNameSearchBox.Text.ToLower()))
+                {
+                    cbItem.Add((int)database.Key, name);
+                }
+
+            }
+
+            databaseSelectorCb.DisplayMember = "Value";
+            databaseSelectorCb.ValueMember = "Key";
+            //if(cbItem.Count <= 0)
+            //{
+            //    cbItem.Clear();
+            //}
+                
+            databaseSelectorCb.DataSource = new BindingSource(cbItem, null);
+
+            if (databaseSelectorCb.Items.Count > 0)
+            {
+                databaseSelectorCb.SelectedIndex = 0;
             }
         }
     }
